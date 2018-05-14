@@ -14,21 +14,16 @@ using namespace std;
 
 //Store range values for min/max computation
 float locationValues[512];
-
-
-
-
-
-
-/*
-The scan subscriber call back function
-To understand the sensor_msgs::LaserScan object look at
+int edgeLocations[512];
+/*To understand the sensor_msgs::LaserScan object look at
 http://docs.ros.org/api/sensor_msgs/html/msg/LaserScan.html
 */
 void laserScanCallback(const sensor_msgs::LaserScan::ConstPtr& laserScanData)
 {
 std::ofstream myfile;
+std::ofstream myfile1;
 myfile.open ("location.txt");
+myfile1.open("edge.txt");
 for(int tmp = 0; tmp < 511; tmp++){
         locationValues[tmp] = 0.0f;
 }
@@ -66,10 +61,23 @@ velocityCommand.angular.z = 0.0;
 	myfile << "Array = [ ";	
 	//Print location array 
 	int small = 0; 
-	for(int j=0; j<512; j++){
-	//Loop through arrya 
+	float tmp1 =0.0; 
+	float tmp2 =0.0;
+	float edgeTresh = 3.0;
+	for(int j=0; j<510; j++){
+	//Loop through array 
+	tmp1 =((-1*locationValues[j]) + 1*locationValues[j+2] );
+	tmp2 =((-1*locationValues[j+1]) +( 1*locationValues[j+3]) );
 
-
+	if (abs(tmp1-tmp2) >  edgeTresh){
+		//Pring 1 
+		myfile1 << " 1, ";
+		edgeLocations[j]=1; 
+	} else {
+		//print0 
+		myfile1 << " 0, ";
+		edgeLocations[j]=0;
+	}
 	//Find Smallesyt = centre 
 	//Smallest = locationValue[small]
  
@@ -137,7 +145,7 @@ velocityCommand.angular.z = 0.0;
 	ROS_INFO("Leftside [%f] RIght side [%f]", leftSide, rightSide);
 	myfile << " ]"; 
 	myfile.close();
-
+	myfile1.close(); 
 	
 
 }
