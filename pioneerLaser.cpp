@@ -15,6 +15,7 @@ using namespace std;
 //Store range values for min/max computation
 float locationValues[512];
 int edgeLocations[512];
+int edges[512];
 /*To understand the sensor_msgs::LaserScan object look at
 http://docs.ros.org/api/sensor_msgs/html/msg/LaserScan.html
 */
@@ -38,8 +39,8 @@ float rangeDataNum = 1 + (laserScanData->angle_max - laserScanData->angle_min)  
 //move forward
 velocityCommand.linear.x = 0.0;
 velocityCommand.angular.z = 0.0;
-//	ROS_INFO("Angle Max : [%f]" , laserScanData->angle_max );
-//	ROS_INFO("Angle Min : [%f]" , laserScanData->angle_min );
+	ROS_INFO("Angle Max : [%f]" , laserScanData->angle_max );
+	ROS_INFO("Angle Min : [%f]" , laserScanData->angle_min );
         ROS_INFO("Angle Max - Degrees : [%f]" , (180/3.1415)*laserScanData->angle_max );
         ROS_INFO("Angle Min- Degreees : [%f]" , (180/3.1415)*laserScanData->angle_min );
 
@@ -52,19 +53,23 @@ velocityCommand.angular.z = 0.0;
 	//Store location in array 
 	locationValues[i]=laserScanData->ranges[i];
 		
-	if((i%50)==0) {
-	ROS_INFO("range[%d] : [%f]" , i , laserScanData->ranges[i]);
-	//ROS_INFO("intensities[%d} :[%f]", i , laserScanData->intensities[i]);
-		}
 	}
-	
-	myfile << "Array = [ ";	
-	//Print location array 
+
+
 	int small = 0; 
+	int right =0; 
+	int left = 0; 
 	float tmp1 =0.0; 
 	float tmp2 =0.0;
 	float edgeTresh = 3.0;
 	for(int j=0; j<510; j++){
+	if(locationValues[small] < locationValues[j]) {
+		small = small; 
+	} else {
+	small = j;
+	} 
+	
+
 	//Loop through array 
 	tmp1 =((-1*locationValues[j]) + 1*locationValues[j+2] );
 	tmp2 =((-1*locationValues[j+1]) +( 1*locationValues[j+3]) );
@@ -78,75 +83,85 @@ velocityCommand.angular.z = 0.0;
 		myfile1 << " 0, ";
 		edgeLocations[j]=0;
 	}
-	//Find Smallesyt = centre 
-	//Smallest = locationValue[small]
- 
-	if(locationValues[small] < locationValues[j]) {
-		small = small; 
-	} else {
-	small = j;
-	} 
-	
-	//ROS_INFO("\n\n\n\n\n\n\nArray[%d] =[%f]" , j , locationValues[j] );
- 
-
-	 myfile <<  ( "[%f] ", locationValues[j]) << ( ", " ) ;
 	}
-	//Loop out and find edge
-	int edgeA = 0; 
-	int edgeB = 0; 
-	int edgeC = 0; 
-	float thres;
-	float leftSide = 0.0; 
-	float rightSide = 0.0;
-	for(int k=0; k<256; k++){
-	//right edge
-	if((locationValues[small+k]-locationValues[small+(k-1)]) > thres ) {
-	edgeA = (small+(k-1)); 
-	leftSide = locationValues[small+(k-1)];
-	//locationValue[small+k];
-	}
-	//Left Edge
-	if((locationValues[small-(k+1)]-locationValues[small-(k)]) > thres)	{
-	edgeB = (small-(k-2));
-	rightSide = locationValues[small - k];
-	}
-	
-	}
-	
-	//Loop from edge to centre and check if gradient changes therefore circle=true; 
-	//Calculate 
-	float leftCord = 0.0; 
-	float  centreCord = 0.0; 
-	float  rightCord = 0.0; 
-	//leftCord = locationValues[edgeA];
-	leftCord = leftSide; 
-	
-	centreCord = locationValues[small];
-	//rightCord = locationValues[edgeB]; 
-	rightCord = rightSide; 	
-
-	float angle1 = 0; 
-	angle1 = 0.35226 * (edgeA - small);
-	float triAns = 0.0; 	
-	//a^2 = b^2 + c^2 -2bcCosA
-	triAns = sqrt( (leftCord*leftCord) + (centreCord*centreCord) -( (2*leftCord*centreCord) * cos(angle1)));
-	
-        float angle2 = 0;  
-        angle1 = 0.35226 * (small - edgeB); 
-        float triAns1 = 0.0;      
-        //a^2 = b^2 + c^2 -2bcCosA 
-        triAns1 = sqrt( (rightCord*rightCord) + (centreCord*centreCord) -( (2*rightCord*centreCord) * cos(angle2))); 
 
 
-	ROS_INFO("Width [%f]", triAns*1.2);
-	ROS_INFO("Length [%f]", triAns1*1.2); 
-	myfile << "LCord: " << leftCord << "CCord: " << centreCord << "RCord :" << rightCord << "triAns : " << triAns << std::endl;
-	ROS_INFO("Leftside [%f] RIght side [%f]", leftSide, rightSide);
-	myfile << " ]"; 
+
+	
+	for(int k = 0; k < 512; k++){
+
+	//After every 101 is an edge  
+
+	//If k-3 = 1 k-2=0 and k-1 = 1 then k is edge 
+	if(edgeLocations[k-3] == 1 && edgeLocations[k-2] == 0 && edgeLocations[k-1] == 0){
+	edges[k-2] = 1;
+		if( k >= small){
+			left = k-3;
+		} else {
+			right = k-2;
+		} 
+	} else{
+	edges[k-2] = 8;
+	}
+
+	//Edges at k-2 and k-3
+	ROS_INFO("Edges :[%d][%f][%d][%d][%f][%f][%f][%d][%d]   ",k, locationValues[k], edgeLocations[k], edges[k], locationValues[small], locationValues[left], locationValues[right], left, right);
+
+	}
+
+	//x-y cordinate right 
+	float anglr = 0.0061359*right;
+	float xcorR = locationValues[right]*cos(anglr);
+	float ycorR = locationValues[right]*sin(anglr);
+	ROS_INFO("Right X Cor: [%f], Y Cor: [%f]", xcorR, ycorR);
+
+	//x-y cordinate left 
+	float angll = 0.0061359*left;
+	float xcorL = locationValues[left]*cos(angll);
+	float ycorL = locationValues[left]*sin(angll);
+	ROS_INFO("Left X Cor: [%f], Y Cor: [%f]", xcorL, ycorL);
+
+
+	//x-y cordinate small 
+	float anglm = 0.0061359*small;
+	float xcorM = locationValues[small]*cos(anglm);
+		float ycorM = locationValues[small]*sin(anglm);
+	ROS_INFO("Small X Cor: [%f], Y Cor: [%f]", xcorM, ycorM);
+
+	
+	//MR Line 
+	float grad = ((ycorR-ycorM)/(xcorR-xcorM));	
+	
+	//Checking if 3 points are on a circle
+	int testPnt = int( 0.5*(small+right));
+	ROS_INFO("test x: [%f], [%f]", locationValues[testPnt]*sin(0.0061359*testPnt), locationValues[testPnt]*cos(0.0061359*testPnt));	
+	ROS_INFO("if : [%f]", ((locationValues[testPnt])*sin(0.0061359*testPnt)) -( (grad*(locationValues[testPnt])*cos(0.0061359*testPnt) )+ locationValues[small]*sin(anglm)));
+	if(abs(((locationValues[testPnt])*sin(0.0061359*testPnt)) -( (grad*(locationValues[testPnt])*cos(0.0061359*testPnt) )+ locationValues[small]*sin(anglm))) >= 0.005 )	{
+	//Issa Circle
+	float cirA = (0.0061359*(small-right));
+	float cirAdj = locationValues[right];
+	float cirRad = cirAdj * tan(cirA);
+	ROS_INFO("Circle Radius: [%f]:", cirRad);
+	};	
+
+	//Find length assuming its has right angles 
+	//right side	
+	float angle1 =  0.0061359*(small-right);
+	float sqA = locationValues[small]*locationValues[small];
+	float sqB = locationValues[right]*locationValues[right];
+	float twoobc = 2*locationValues[small]*locationValues[right] * cos(angle1);
+	float calcTri = sqrt(sqA + sqB - twoobc);
+	
+	//Left Side
+	float angle2 =  0.0061359*(left-small);
+	float sqC = locationValues[small]*locationValues[small];
+	float sqD = locationValues[left]*locationValues[left];
+	float twobc = 2*locationValues[small]*locationValues[left] * cos(angle2);
+	float calcTri2 = sqrt(sqC + sqD - twobc);
+	//Check object length calculations
+	//ROS_INFO("Side Length:[%f][%f][%f][%f][%f] ", sqA, sqB, twoobc ,angle1, calcTri2);
 	myfile.close();
 	myfile1.close(); 
-	
 
 }
 
