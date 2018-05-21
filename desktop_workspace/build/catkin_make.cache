@@ -1,0 +1,2 @@
+openslam_gmapping:robot_driver:slam_gmapping/gmapping:slam_gmapping/slam_gmapping
+-DCATKIN_DEVEL_PREFIX=/home/rosuser/Desktop/desktop_workspace/devel -DCMAKE_INSTALL_PREFIX=/home/rosuser/Desktop/desktop_workspace/install -G Unix Makefiles
